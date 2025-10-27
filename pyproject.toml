@@ -1,0 +1,12 @@
+[project]
+name = "REXP"
+version = "0.0.1"
+description = "AI EXP Framework."
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+rexp = "run:main"
+sync_notion = "scripts.sync_notion:main"
