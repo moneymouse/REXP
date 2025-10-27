@@ -11,8 +11,9 @@ parse = argparse.ArgumentParser()
 sys.path.insert(0, os.getcwd())
 
 # training settings are decieded by the experiment id
-parse.add_argument("-exp", "--experiment_id", help="The experiment id used to identify the experiment. \n " \
+parse.add_argument("-exp_id", "--experiment_id", help="The experiment id used to identify the experiment. \n " \
                     "Recommend to set EXP_ID environmental variable.", type=str)
+parse.add_argument("exp_path", help="EXP script path to run.", type=str)
 parse.add_argument("-a", "--accelerator", choices=['cpu','gpu','torchrunn'], default='torchrun', 
                    help="Choose your expected devices to train or reason your model. " \
                         "Please use 'CUDA_VISIBLE_DEVICES' enviromental variable to control the GPU id used to train. " \
@@ -55,7 +56,7 @@ def main():
      
      with HiddenPrints(os.environ.get('LOCAL_RANK','0')):
           logger.info("Start experiment: %s", args.experiment_id)
-          runpy.run_module(f"exp.{args.experiment_id}", run_name=args.experiment_id)
+          runpy.run_path(args.exp_path, run_name="__main__")
           logger.info("Experiment finished.")
           # log save_dir of the experiment
           logger.info("Experiment save_dir: %s", os.environ['RES_PATH'])
