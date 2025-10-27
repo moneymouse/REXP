@@ -21,7 +21,7 @@ class EXP_BASIC():
     model: BaseModule | DDP
 
     def __init__(self, model, logger: Run, early_stop: _EarlyStopType|None = None, epochs=500, exp_id=os.environ['EXP_ID'],
-                 result_path: Path|str=os.environ['RES_PATH'], device=os.environ['ACCELERATOR'], model_path: Path|str = "", config: dict|None = None) -> None:
+                 result_path: Path|str=os.environ['RES_PATH'], device=os.environ['ACCELERATOR'], model_path: Path|str = "") -> None:
         self.logger = logging.getLogger(exp_id)
         self.logger.info("Initializing experiment...")
         self.logger.info("Checking device...")
@@ -36,7 +36,6 @@ class EXP_BASIC():
         # hyper parameters
         self.early_stop = early_stop
         self.epochs = epochs
-        self.config = config
         self.model_path = model_path
          
         # wandb logger

@@ -188,6 +188,10 @@ class WandbContext:
             **wandb_init_kwargs: Arguments to pass to wandb.init
         """
         self.wandb_init_kwargs = wandb_init_kwargs
+        
+        if('project' not in self.wandb_init_kwargs):
+            self.wandb_init_kwargs['project'] = os.environ.get('EXP_ID', 'default_project')
+
         self.run = None
         self.debug_mode = os.environ.get("DEBUG", "").lower() in ("1", "true", "yes", "on")
         

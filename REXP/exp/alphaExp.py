@@ -57,10 +57,10 @@ class EXP(EXP_BASIC):
         # It's EXP's busness!
         # lr scheduler and optimizer
         if(type(self.model) == DDP):
-            optimizer = self.model.module.configure_optim(self.config['lr']) # type: ignore
+            optimizer = self.model.module.configure_optim() # type: ignore
             scheduler = self.model.module.lr_schedulers() # type: ignore
         else:
-            optimizer = self.model.configure_optim(self.config['lr'])
+            optimizer = self.model.configure_optim()
             scheduler = self.model.lr_schedulers() # type: ignore
 
         # train the model
