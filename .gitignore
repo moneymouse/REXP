@@ -1,4 +1,4 @@
 .DS_Store
 build/*
-REXP.egg-info/*
+REXP.egg-info/
 **/__pycache__/*
