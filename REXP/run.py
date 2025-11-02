@@ -3,9 +3,9 @@ import tomllib
 import os
 import sys
 import runpy
-from utils.tools import AttrDict, setup_logger
+from .utils.tools import AttrDict, setup_logger
 import torch
-from utils.tools import get_result_path, HiddenPrints
+from .utils.tools import get_result_path, HiddenPrints
 
 parse = argparse.ArgumentParser()
 sys.path.insert(0, os.getcwd())

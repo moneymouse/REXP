@@ -4,10 +4,10 @@ version = "0.0.1"
 description = "AI EXP Framework."
 requires-python = ">=3.11"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["REXP*"]
-
 [project.scripts]
 rexp = "REXP.run:main"
 sync_notion = "REXP.scripts.sync_notion:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
