@@ -1,7 +1,6 @@
 from curses.panel import new_panel
 import logging
 import datetime
-import requests
 import os
 from pathlib import Path
 from sympy import true

@@ -12,7 +12,7 @@ from tqdm import trange
 import os
 import numpy as np
 
-from utils.tools import pos_print
+from ..utils.tools import pos_print
 
 from .exp_basic import EXP_BASIC
 

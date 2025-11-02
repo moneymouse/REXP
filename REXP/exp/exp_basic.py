@@ -9,7 +9,7 @@ from pathlib import Path
 
 from wandb.wandb_run import Run
 from models.baseModule import BaseModule
-from utils.tools import EarlyStop
+from ..utils.tools import EarlyStop
 
 _EarlyStopType = EarlyStop
 
