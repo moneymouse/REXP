@@ -176,7 +176,7 @@ class EXP(EXP_BASIC):
                     # torch.cuda.empty_cache()
         
         avg_loss = sum(losses).detach().item() / len(losses)
-        logger.info(f"test loss: {avg_loss}")
+        logger.info(f"test loss: {avg_loss}\n")
         self.wandb_logger.summary({
             "test/avg_loss": avg_loss
         })
