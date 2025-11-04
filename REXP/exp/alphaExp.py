@@ -177,3 +177,6 @@ class EXP(EXP_BASIC):
         
         avg_loss = sum(losses).detach().item() / len(losses)
         logger.info(f"test loss: {avg_loss}")
+        self.wandb_logger.summary({
+            "test/avg_loss": avg_loss
+        })
