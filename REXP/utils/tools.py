@@ -194,7 +194,7 @@ class WandbContext:
         self.run = None
         self.debug_mode = os.environ.get("DEBUG", "").lower() in ("1", "true", "yes", "on")
         
-    def __enter__(self):        
+    def __enter__(self) -> wandb.Run:        
         # Check if RES_PATH exists and rename it if needed
         res_path = os.environ.get('RES_PATH')
         if res_path and os.path.exists(res_path):
