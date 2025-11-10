@@ -1,4 +1,3 @@
-from pyexpat import model
 import time
 from collections.abc import Callable
 from typing import Protocol, TypeVar

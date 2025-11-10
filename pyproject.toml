@@ -6,7 +6,6 @@ requires-python = ">=3.11"
 
 [project.scripts]
 rexp = "REXP.run:main"
-sync_notion = "REXP.scripts.sync_notion:main"
 
 [build-system]
 requires = ["setuptools"]

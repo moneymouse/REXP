@@ -63,6 +63,7 @@ def setup_logger(experiment_id, result_path: Path, log_level=logging.INFO):
 
     streamHandler = logging.StreamHandler()
     streamHandler.addFilter(logging.Filter(os.environ['EXP_ID']))
+    streamHandler.addFilter(logging.Filter("__main__"))
     streamHandler.addFilter(RankFilter())
     
     fileHandler = logging.FileHandler(Path(result_path) / f"{experiment_id}__{init_time}.log")
