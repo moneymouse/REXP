@@ -1,4 +1,3 @@
-from curses.panel import new_panel
 import logging
 import datetime
 import os
@@ -8,7 +7,6 @@ import torch
 import numpy as np
 import pickle
 import shutil
-
 import sys
 import wandb
 
@@ -31,13 +29,16 @@ class HiddenPrints:
         if str(self.rank) == '0':
             return
         self._original_stdout = sys.stdout
+        self._original_stderr = sys.stderr
         sys.stdout = open(os.devnull, 'w')
+        sys.stderr = open(os.devnull, 'w')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if str(self.rank) == '0':
             return
         sys.stdout.close()
         sys.stdout = self._original_stdout
+        sys.stderr = self._original_stderr
 
 class RankFilter(logging.Filter):
     def __init__(self, rank=0):
@@ -63,7 +64,6 @@ def setup_logger(experiment_id, result_path: Path, log_level=logging.INFO):
 
     streamHandler = logging.StreamHandler()
     streamHandler.addFilter(logging.Filter(os.environ['EXP_ID']))
-    streamHandler.addFilter(logging.Filter("__main__"))
     streamHandler.addFilter(RankFilter())
     
     fileHandler = logging.FileHandler(Path(result_path) / f"{experiment_id}__{init_time}.log")
@@ -78,7 +78,7 @@ def setup_logger(experiment_id, result_path: Path, log_level=logging.INFO):
     return logging.getLogger(experiment_id)
 
 class EarlyStop:
-    def __init__(self, path: str | Path = None, patience=2, save_model=True):
+    def __init__(self, path: str | Path = None, patience=2, save_model=True, ddp=False):
         r"""
             Args:
                 path:
@@ -90,6 +90,8 @@ class EarlyStop:
         self.count = 0
         self.best_score = np.inf
         self.save = save_model
+        self.ddp = ddp
+        self.rank = int(os.environ.get('LOCAL_RANK', '0'))
     
     def __call__(self, model, vali_score) -> bool:
         if vali_score > self.best_score:
@@ -102,11 +104,10 @@ class EarlyStop:
             self.count = 0
             self.best_score = vali_score
             self._save_model(model)
-
         return False
     
     def _save_model(self, model):
-        if self.save:
+        if self.save and self.rank == 0:
             torch.save(model.state_dict(), self.path / "checkpoint.pth")
         # self.logger.info("Best model saved at {}".format(self.path))
     
@@ -195,7 +196,7 @@ class WandbContext:
         self.run = None
         self.debug_mode = os.environ.get("DEBUG", "").lower() in ("1", "true", "yes", "on")
         
-    def __enter__(self) -> wandb.Run:        
+    def __enter__(self):        
         # Check if RES_PATH exists and rename it if needed
         res_path = os.environ.get('RES_PATH')
         if res_path and os.path.exists(res_path):
@@ -226,7 +227,7 @@ class WandbContext:
 
     @staticmethod
     def update_dir():
-        if new_path := os.environ.get("NEW_PATH", False):
+        if new_path == os.environ.get("NEW_PATH", False):
             res_path = Path(os.environ.get("RES_PATH"))
             new_path = Path(new_path)
             res_path.rename(new_path)

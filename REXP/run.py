@@ -48,16 +48,13 @@ def main():
      
      # generate res path and make dir in res path.
      os.environ['RES_PATH'] = str(args.result_path)
-     os.environ['EXP_NOTE'] = args.title if args.title else "" # record note for the later use
+     os.environ['EXP_NOTE'] = args.note if args.note else "" # record note for the later use
      
      # setup logger
      
      with HiddenPrints(os.environ.get('LOCAL_RANK','0')):
           print("Start experiment: %s", args.experiment_id)
           runpy.run_path(args.exp_path, run_name="__main__")
-          print("Experiment finished.")
-          # log save_dir of the experiment
-          print("Experiment save_dir: %s", os.environ['RES_PATH'])
      torch.distributed.destroy_process_group() if args.accelerator == 'torchrun' else None
 
 if __name__ == '__main__':

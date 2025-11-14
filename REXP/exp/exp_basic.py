@@ -19,41 +19,49 @@ class EXP_BASIC():
     wandb_logger: Run
     model: BaseModule | DDP
 
-    def __init__(self, model, config, early_stop: _EarlyStopType | None = None, epochs=500, exp_id=os.environ['EXP_ID'], run_name: str="",
-                 result_path: Path | str=os.environ['RES_PATH'], device=os.environ['ACCELERATOR'], model_path: Path|str = "") -> None:
+    def __init__(self, model, config, early_stop: _EarlyStopType | None | str = 'default', epochs=500, exp_id=os.environ['EXP_ID'], 
+    run_name: str="",result_path: Path | str=os.environ['RES_PATH'], device=os.environ['ACCELERATOR'], model_path: Path|str = "") -> None:
         self.exp_id = exp_id
         self.run_name = run_name
-        self.result_path = Path(result_path or \
-            get_result_path(self.exp_id, self.run_name))
+        if result_path == "":
+            self.result_path = get_result_path(self.exp_id, self.run_name)
+        else:
+            self.result_path = Path(result_path)
+            os.makedirs(self.result_path, exist_ok=True)
         self.logger = setup_logger(self.exp_id, self.result_path)
         self.logger.info("Initializing experiment...")
         self.logger.info("Checking device...")
         device_id = os.environ.get("LOCAL_RANK","0")
         self.device = torch.device(f"cuda:{device_id}") if device != 'cpu' else torch.device("cpu")
+        self.ddp = device == 'torchrun'
         if model_path:
             self.logger.info(f"Loading model from {model_path}...")
             model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.logger.info(f"Model loaded to device: {self.device}")
-        self.model = DDP(model.to(self.device), device_ids=[self.device], find_unused_parameters=True) if device == 'torchrun' else model.to(self.device)
+        self.model = DDP(model.to(self.device), device_ids=[self.device], find_unused_parameters=True) if self.ddp else model.to(self.device)
         
         self.wandb_logger = wandb.init(
             project=self.exp_id,
             name=self.run_name,
             config=config,
-            note=os.environ.get('EXP_NOTE',''),
-            dir=str(self.result_path)
+            notes=os.environ.get('EXP_NOTE',''),
+            dir=str(self.result_path),
+            mode="disabled" if os.environ.get("DEBUG","").lower() in ("1", "true", "yes", "on") else "online"
         )
         # hyper parameters
-        self.early_stop = early_stop
+        self.early_stop = EarlyStop(path=self.result_path, patience=config.patience, ddp=self.ddp) if early_stop == 'default' else early_stop
         self.epochs = epochs
         self.model_path = model_path
         self.config = config
         self.step = 0
 
     def __enter__(self):
+        self.logger.info(f"Start experiment: {self.exp_id}")
         return self
     
     def __exit__(self, exc_type, exc_value, traceback):
+        self.logger.info(f"Experiment {self.exp_id} finished.")
+        self.logger.info(f"Results are saved in {self.result_path}.")
         self.exit_logger()
     
     def exit_logger(self):

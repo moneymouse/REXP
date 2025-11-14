@@ -5,6 +5,7 @@ from xml.dom import NotFoundErr
 from pydantic import BaseModel
 from torch.utils.data.dataloader import DataLoader
 from torch.nn.parallel import DistributedDataParallel as DDP
+import torch.distributed as dist
 import logging
 import torch
 from tqdm import trange
@@ -50,7 +51,6 @@ class EXP(EXP_BASIC):
         return func
     
     def train(self):
-
         # Adam optimizer
         # TODO: it's necessary to give a lr to configure_optim. 
         # It's EXP's busness!
@@ -78,7 +78,6 @@ class EXP(EXP_BASIC):
                         batch_tensor = [torch.Tensor(b).float().to(self.device) for b in batch]
                         loss = self._training_loop(self.model ,idx, batch_tensor)
                         # bp
-                        # TODO: distributed training barrier?
                         loss.backward()
                         optimizer.step()
                         epoch_losses.append(loss)
@@ -98,33 +97,47 @@ class EXP(EXP_BASIC):
                 train_loss =  torch.Tensor(epoch_losses).detach().mean().item() / len(epoch_losses)
                 vali_loss = None
                 if(self.vali_loader):
-                    vali_loss = self.vali()
-                    pos_print(3 ,f"train_loss: {train_loss:.4f}, vali_loss: {vali_loss:.4f}")
-                    # epoch_bar.set_postfix({"train_loss": f"{train_loss:.4f}", "vali_loss": f"{vali_loss:.4f}"})
-                    # with logging_redirect_tqdm():
-                        # logger.info(f"Train loss: {train_loss:.4f} Validation loss {vali_loss:.4}")
-                    self.wandb_logger.log({'train/loss': train_loss, 'vali/loss': vali_loss}, step=self.step) if self.wandb_logger != None else None
+                    if os.environ.get('LOCAL_RANK', '0') == '0' or not self.ddp:
+                        vali_loss = self.vali()
+                        pos_print(3 ,f"train_loss: {train_loss:.4f}, vali_loss: {vali_loss:.4f}")
+                        # epoch_bar.set_postfix({"train_loss": f"{train_loss:.4f}", "vali_loss": f"{vali_loss:.4f}"})
+                        # with logging_redirect_tqdm():
+                            # logger.info(f"Train loss: {train_loss:.4f} Validation loss {vali_loss:.4}")
+                        self.wandb_logger.log({'train/loss': train_loss, 'vali/loss': vali_loss}, step=self.step) if self.wandb_logger != None else None
                 else:
                     pos_print(3 ,f"\ttrain_loss: {train_loss:.4f}")
                     # with logging_redirect_tqdm():
                     #     logger.info(f"Train loss: {train_loss:.4f}")
                     self.wandb_logger.log({'train/loss': train_loss}, step=self.step) if self.wandb_logger != None else None
                 
+                if self.ddp:
+                    stop_flag = torch.tensor(0, device=self.device)
                 # early stop and save best model
                 if os.environ.get('LOCAL_RANK', '0') == '0':
                     if vali_loss and self.early_stop and self.early_stop(self.model, vali_loss):
+                        if self.ddp:
+                            stop_flag = torch.tensor(1, device=self.device)
+                        else:
+                            break
+                if self.ddp:
+                    dist.broadcast(stop_flag, src=0)
+                    if stop_flag.item() == 1:
                         break
-                
                 # schedule
                 if type(scheduler) == list:
                     [s.step(epoch) for s in scheduler]
                 if type(scheduler) == torch.optim.lr_scheduler.LRScheduler:
                     scheduler.step(epoch)
                 
+                if self.ddp:
+                    self.loader.sampler.set_epoch(epoch + 1)
                 # update the progress bar
                 epoch_bar.update(1)
                 
         self.logger.info("Best model saved at {}".format(self.early_stop.path)) if self.early_stop and self.early_stop.save else None
+        if self.ddp:
+            dist.barrier()
+        return
         
 
     def vali(self):
@@ -143,7 +156,12 @@ class EXP(EXP_BASIC):
                     # torch.cuda.empty_cache()
             
         vali_loss = sum(losses).item() / len(losses)
-        return np.float64(vali_loss)
+        if self.ddp:
+            # gather vali_loss from all processes
+            vali_loss_tensor = torch.tensor(vali_loss).to(self.device)
+            dist.all_reduce(vali_loss_tensor, op=dist.ReduceOp.SUM)
+            vali_loss = (vali_loss_tensor / dist.get_world_size()).item()
+        return vali_loss
         
     def test(self, test_loader: DataLoader | None, model: BaseModel | None = None):
         # load best model after training
