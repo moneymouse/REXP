@@ -37,6 +37,7 @@ class HiddenPrints:
         if str(self.rank) == '0':
             return
         sys.stdout.close()
+        sys.stderr.close()
         sys.stdout = self._original_stdout
         sys.stderr = self._original_stderr
 
